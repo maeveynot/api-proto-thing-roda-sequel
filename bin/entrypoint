@@ -1,0 +1,5 @@
+#!/bin/sh -e
+
+bundle update >/dev/null
+bundle install >/dev/null
+bundle exec "$@"

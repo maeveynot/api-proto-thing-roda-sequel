@@ -1,0 +1,25 @@
+version: '3'
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        HOST_UID: ${HOST_UID:?please run via bin/docker-compose}
+    environment:
+      - RACK_ENV
+      - PLUM_SESSION_KEY
+      - PLUM_DATABASE_URL
+    working_dir: /plum
+    volumes:
+      - .:/plum
+    ports:
+      - "9292:9292"
+    depends_on:
+      - postgres
+  postgres:
+    image: "postgres:12-alpine"
+    environment:
+      - POSTGRES_DB
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD

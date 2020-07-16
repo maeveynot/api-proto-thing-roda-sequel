@@ -1,0 +1,8 @@
+#!/bin/sh
+
+# Terrible hack to work around having these two dbs in the same container.
+# Remove this soon.
+in_pg() { bin/docker-compose exec -e PGPASS="$(cat .secrets/db-password.txt)" postgres "$@"; }
+in_pg psql -lqt -U plum_app | grep -q plum_test || in_pg createdb -U plum_app plum_test
+
+RACK_ENV=test bin/docker-compose exec api bundle exec rake test

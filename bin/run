@@ -1,0 +1,4 @@
+#!/bin/sh -e
+
+rake db:migrate:up
+rackup --host 0.0.0.0
