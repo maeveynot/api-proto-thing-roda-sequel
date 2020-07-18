@@ -2,7 +2,6 @@ require 'rack/ssl-enforcer'
 require 'rack/jwt'
 require 'roda'
 require_relative 'models'
-require_relative 'lib/patches'
 require_relative 'lib/session'
 
 module Plum
