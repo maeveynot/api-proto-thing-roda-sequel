@@ -64,7 +64,7 @@ namespace :container do
   namespace :token do
     desc "Generate a token in the app container"
     task :generate do
-      docker_compose %w[run api rake token:generate]
+      docker_compose %w[run -e SKIP_BUNDLE_INSTALL=y api rake token:generate]
     end
   end
 
