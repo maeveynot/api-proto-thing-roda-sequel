@@ -1,42 +1,21 @@
 #!/bin/sh -e
 
-env_secrets_dir=".secrets/${RACK_ENV:=development}"
-mkdir -p "$env_secrets_dir"
-
-jwt_key="$env_secrets_dir/session-key.pem"
-db_pwfile=".secrets/db-password.txt"
-
-for prog in openssl pwgen; do
-    if ! command -v "$prog" >/dev/null; then
-        echo "$0: please install $prog, or generate secrets manually"
-        exit 2
-    fi
-done
-
-test -f "$jwt_key" || openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 > "$jwt_key"
-test -f "$db_pwfile" || pwgen 40 1 > "$db_pwfile"
-
-POSTGRES_DB="plum_$RACK_ENV"
-POSTGRES_USER="plum_app"
-POSTGRES_PASSWORD=$(cat "$db_pwfile")
-
-HOST_UID=$(id -u)
-PLUM_SESSION_KEY=$(cat "$jwt_key")
-PLUM_DATABASE_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres/${POSTGRES_DB}"
-
-# Used to configure the postgres container
-export POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD
-# Used for the app container build, so we can share files
-export HOST_UID
-# Passed through to the app
-export RACK_ENV PLUM_DATABASE_URL PLUM_SESSION_KEY
-
-# We can exec a command with a different RACK_ENV than the container's CMD
-# (e.g. to run tests); when doing so, override the values that were previously
-# passed through at container start time with the ones for this command.
-
-case "$1" in
-    exec) shift; set -- exec -e RACK_ENV -e PLUM_DATABASE_URL -e PLUM_SESSION_KEY "$@";;
+case "${RACK_ENV:=development}" in
+    development) PLUM_PORT=9292;;
+    production) PLUM_PORT=9393;;
+    test) PLUM_PORT=9494;;
+    *) PLUM_PORT=9595;;
 esac
 
-docker-compose "$@"
+export RACK_ENV PLUM_PORT
+
+export POSTGRES_DB="plum_${RACK_ENV}"
+export POSTGRES_USER="plum_app"
+export POSTGRES_PASSWORD="$(rake secrets:db_password)"
+
+export PLUM_DATABASE_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres/${POSTGRES_DB}"
+export PLUM_SESSION_KEY="$(rake secrets:session_key)"
+export HOST_UID="$(id -u)"
+
+mkdir -p "bundle/${RACK_ENV}"
+docker-compose --project-name "plum-${RACK_ENV}" "$@"

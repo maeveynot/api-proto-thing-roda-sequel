@@ -1,70 +1,79 @@
-require 'rake/testtask'
+require 'fileutils'
+require 'securerandom'
+require 'openssl'
 
-namespace :spec do
-  %i[model web].each do |s|
-    Rake::TestTask.new(s) do |t|
-      desc "Run #{s} specs"
-      t.test_files = FileList["spec/#{s}/**/*_spec.rb"]
-      t.verbose = true
+ENV['RACK_ENV'] ||= 'development'
+
+namespace :secrets do
+  def secret(file)
+    path = "#{File.dirname(__FILE__)}/tmp/secrets/#{ENV['RACK_ENV']}/#{file}"
+    begin
+      File.read(path)
+    rescue Errno::ENOENT
+      content = yield
+      FileUtils.mkdir_p(File.dirname(path))
+      File.open(path, 'w') {|f| f.write(content) }
+      content
     end
-    task s => :'db:migrate:up'
   end
 
-  desc "Run all specs"
-  task all: %i[model web]
-end
-
-desc "Run tests"
-task test: :'spec:all'
-task default: :test
-
-namespace :db do
-  task :create do
-    raise "not implemented"
+  desc "Show generated database password"
+  task :db_password do
+    puts secret('db-password.txt') { SecureRandom.urlsafe_base64 }
   end
 
-  namespace :migrate do
-    def migrate(version)
-      require_relative 'db'
-      require 'logger'
-      Sequel.extension :migration
-      DB.loggers << Logger.new($stdout) if DB.loggers.empty?
-      Sequel::Migrator.apply(DB, 'migrate', version)
-    end
-
-    desc "Apply all migrations"
-    task :up do
-      migrate(nil)
-    end
-    desc "Roll back all migrations"
-    task :down do
-      migrate(0)
-    end
-    desc "Roll back and re-apply all migrations"
-    task bounce: %i[down up]
+  desc "Show generated RSA session key"
+  task :session_key do
+    puts secret('session-key.pem') { OpenSSL::PKey::RSA.generate(2048) }
   end
 end
 
-desc "Annotate Sequel models"
-task :annotate do
-  raise "please run in development" unless ENV['RACK_ENV'] == 'development'
-  require_relative 'models'
-  require 'sequel/annotate'
-  DB.loggers.clear
-  Sequel::Annotate.annotate(Dir['models/*.rb'])
-end
+namespace :container do
+  def docker_compose(args)
+    trap 'INT', 'IGNORE'
+    sh 'bin/docker-compose', *args
+  end
 
-namespace :token do
-  desc "Generate a valid JWT"
-  task :generate do
-    #require 'rack/ssl-enforcer'
-    require_relative 'lib/session'
-    puts Plum::Session.token
+  desc "Run app via docker-compose"
+  task :up do
+    docker_compose %w[up]
+  end
+
+  desc "Stop docker-compose containers"
+  task :down do
+    docker_compose %w[down]
+  end
+
+  desc "List running docker-compose processes"
+  task :top do
+    docker_compose %w[top]
+  end
+
+  desc "Run tests in app container"
+  task :test do
+    ENV['RACK_ENV'] = 'test'
+    docker_compose %w[up --detach postgres]
+    docker_compose %w[run api rake test]
+  end
+
+  desc "Run irb in app container with models loaded"
+  task :irb do
+    docker_compose %w[run api irb -r ./models]
+  end
+
+  namespace :token do
+    desc "Generate a token in the app container"
+    task :generate do
+      docker_compose %w[run api rake token:generate]
+    end
+  end
+
+  namespace :bundle do
+    desc "Run bundle update in app container"
+    task :update do
+      docker_compose %w[run api bundle update]
+    end
   end
 end
 
-desc "Run irb with models loaded"
-task :irb do
-  trap 'INT', 'IGNORE'
-  sh 'irb', '-r', './models'
-end
+task :default => :'container:up'

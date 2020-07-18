@@ -2,19 +2,21 @@ version: '3'
 services:
   api:
     build:
-      context: .
+      context: ./app
       dockerfile: Dockerfile
       args:
         HOST_UID: ${HOST_UID:?please run via bin/docker-compose}
     environment:
       - RACK_ENV
-      - PLUM_SESSION_KEY
+      - PLUM_PORT
       - PLUM_DATABASE_URL
+      - PLUM_SESSION_KEY
     working_dir: /plum
     volumes:
-      - .:/plum
+      - ./app:/plum
+      - ./bundle/${RACK_ENV}:/plum/vendor/bundle
     ports:
-      - "9292:9292"
+      - ${PLUM_PORT}:${PLUM_PORT}
     depends_on:
       - postgres
   postgres:

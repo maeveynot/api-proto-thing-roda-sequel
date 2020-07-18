@@ -1,5 +1,0 @@
-#!/bin/sh -e
-
-echo "please use the development environment with this repository mounted"
-echo "at /plum. you can do so by running: bin/docker-compose up"
-exit 1

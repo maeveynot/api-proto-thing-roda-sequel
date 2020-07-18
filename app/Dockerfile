@@ -10,10 +10,8 @@ RUN apt install libpq-dev && \
 
 USER plum
 WORKDIR /plum
-
-RUN bundle config set path .docker/bundle
+ENV BUNDLE_APP_CONFIG /plum/.bundle
 
 COPY bin/entrypoint bin/entrypoint
-COPY bin/run.container-stub bin/run
 ENTRYPOINT ["bin/entrypoint"]
-CMD ["bin/run"]
+CMD ["rake", "run"]
