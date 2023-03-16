@@ -15,7 +15,7 @@ GEM
     minitest-hooks (1.5.0)
       minitest (> 5.3)
     pg (1.2.3)
-    rack (2.2.3)
+    rack (2.2.6.4)
     rack-ssl-enforcer (0.2.9)
     rack-test (1.1.0)
       rack (>= 1.0, < 3)
@@ -38,7 +38,7 @@ PLATFORMS
 DEPENDENCIES
   minitest (~> 5.14)
   minitest-hooks (~> 1.5)
-  rack (~> 2.2, >= 2.2.3)
+  rack (~> 2.2)
   rack-jwt!
   rack-ssl-enforcer (~> 0.2)
   rack-test (~> 1.1)
